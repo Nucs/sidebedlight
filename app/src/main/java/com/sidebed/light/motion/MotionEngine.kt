@@ -15,8 +15,9 @@ import kotlin.math.sqrt
  * residual (linear acceleration) into a light intensity:
  *
  *  - magnitude >= [MotionConfig.moveThreshold] turns the light on at the floor.
- *  - Beyond that, brightness ramps up with how hard you move — but 3x less
- *    sensitively than detection, so reaching full takes a real shake.
+ *  - Beyond that, brightness *accumulates* the harder/longer you shake — shake
+ *    detection is 3x less sensitive than on/off detection, and the climb is a
+ *    gradual per-second increment (not an instant jump to the shake's level).
  *  - Brightness is peak-held: it only ever grows; it never fades back while on.
  *
  * After [MotionConfig.offDelayMs] with no significant motion it calls [onIdle], which
@@ -44,6 +45,7 @@ class MotionEngine(
     private var emitted = 0f
     private var active = false
     private var lastSignificantAt = 0L
+    private var lastSampleAt = 0L
 
     fun start() {
         val sensor = accelerometer ?: return
@@ -61,6 +63,7 @@ class MotionEngine(
         emitted = 0f
         active = false
         lastSignificantAt = 0L
+        lastSampleAt = 0L
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -87,15 +90,22 @@ class MotionEngine(
         onMotion((magnitude / config.shakeThreshold).coerceIn(0f, 1f))
 
         val now = SystemClock.elapsedRealtime()
+        val dtSeconds = if (lastSampleAt == 0L) {
+            DEFAULT_DT_SECONDS
+        } else {
+            (now - lastSampleAt).coerceIn(1L, 100L) / 1000f
+        }
+        lastSampleAt = now
+
         if (magnitude >= config.moveThreshold) {
-            // The ramp is deliberately 3x less sensitive than motion *detection*:
-            // turning on stays easy, but climbing toward full takes a much bigger shake.
+            // Shake detection for the ramp is 3x less sensitive than on/off detection:
+            // turning the light on stays easy, but it takes a much bigger shake to climb.
             val span = (config.shakeThreshold - config.moveThreshold).coerceAtLeast(0.1f) *
-                BRIGHTNESS_RAMP_DIVISOR
-            val target = ((magnitude - config.moveThreshold) / span).coerceIn(0f, 1f)
-            // Peak-hold: the light only ever grows brighter and never fades back down.
-            // It resets only when the light turns off (the idle branch below).
-            if (target > emitted) emitted = target
+                SHAKE_DETECTION_DIVISOR
+            val shakeStrength = ((magnitude - config.moveThreshold) / span).coerceIn(0f, 1f)
+            // Gradual peak-hold: brightness accumulates the longer/harder you shake and
+            // never fades back. It resets only when the light turns off (idle branch).
+            emitted = (emitted + shakeStrength * GROWTH_PER_SECOND * dtSeconds).coerceIn(0f, 1f)
             lastSignificantAt = now
             active = true
             onLight(emitted)
@@ -112,7 +122,13 @@ class MotionEngine(
         private const val GRAVITY_ALPHA = 0.8f
         private const val SAMPLING_PERIOD_US = 20_000 // ~50 Hz
 
-        // The brightness ramp climbs 3x slower than motion detection turns the light on.
-        private const val BRIGHTNESS_RAMP_DIVISOR = 3f
+        // Shake detection for the brightness ramp is 3x less sensitive than on/off detection.
+        private const val SHAKE_DETECTION_DIVISOR = 3f
+
+        // Brightness added per second at a full-strength shake. With the divisor above this
+        // reaches max only after a few seconds of hard shaking. Lower = more gradual climb.
+        private const val GROWTH_PER_SECOND = 0.5f
+
+        private const val DEFAULT_DT_SECONDS = 0.02f
     }
 }
