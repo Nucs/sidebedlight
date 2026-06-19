@@ -1,7 +1,10 @@
 package com.sidebed.light.ui
 
 import android.Manifest
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +17,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,7 +37,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -40,11 +48,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sidebed.light.Permissions
 import com.sidebed.light.data.LightMode
 
+private const val FEEDBACK_EMAIL = "elibelash@gmail.com"
+private const val GITHUB_ISSUE_URL = "https://github.com/Nucs/sidebedlight/issues/new"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(vm: SidebedViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
 
@@ -148,6 +160,49 @@ fun SettingsScreen(vm: SidebedViewModel, onBack: () -> Unit) {
             }
 
             PermissionsSection()
+
+            SectionCard("Report a bug") {
+                ActionRow(
+                    icon = Icons.Rounded.Email,
+                    title = "Email",
+                    subtitle = FEEDBACK_EMAIL,
+                    trailing = {
+                        IconButton(onClick = {
+                            clipboard.setText(AnnotatedString(FEEDBACK_EMAIL))
+                            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                                Toast.makeText(context, "Email copied", Toast.LENGTH_SHORT).show()
+                            }
+                        }) {
+                            Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy email")
+                        }
+                    },
+                ) {
+                    // Tapping the row opens an email app; if there's none, copy the address.
+                    val opened = runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$FEEDBACK_EMAIL"))
+                                .putExtra(Intent.EXTRA_SUBJECT, "Sidebed Light bug report")
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }.isSuccess
+                    if (!opened) {
+                        clipboard.setText(AnnotatedString(FEEDBACK_EMAIL))
+                        Toast.makeText(context, "No email app — address copied", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                ActionRow(
+                    icon = Icons.Rounded.BugReport,
+                    title = "Report on GitHub",
+                    subtitle = "Opens a new issue",
+                ) {
+                    runCatching {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_ISSUE_URL))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                }
+            }
 
             Spacer(Modifier.height(24.dp))
         }

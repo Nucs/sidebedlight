@@ -57,4 +57,10 @@ Torch control needs **no** permission.
 - The nightly schedule shows a status-bar alarm icon (a side effect of using a reliable,
   doze-exempt alarm to wake the light).
 
+## Feedback
+
+Found a bug? Use **Settings → Report a bug** in the app — copy the developer email or
+open a GitHub issue. Or directly:
+[open an issue](https://github.com/Nucs/sidebedlight/issues/new) · elibelash@gmail.com
+
 See [`CLAUDE.md`](./CLAUDE.md) for architecture and implementation details.
