@@ -46,6 +46,34 @@ The debug build uses the `.debug` applicationId suffix so it can co-exist with r
 > is `MotionEngine` / `SidebedSettings.toMotionConfig()` (pure-ish) — start there if
 > adding tests. Camera/sensor/window behaviour needs a real device.
 
+### Installing to the dev device (wireless ADB)
+
+Dev phone: **Galaxy S23 Ultra (SM-S918B)**, serial `R5CW51XVDZL`.
+Static LAN IP **`192.168.50.7`** (DHCP-reserved — does **not** change). The pairing and
+connect *ports* are randomised each session, so discover the connect port via mDNS.
+
+On the phone: *Developer options → Wireless debugging → On*. Only when re-pairing, tap
+*Pair device with pairing code* to get the 6-digit code + pairing port.
+
+```bash
+ADB="$ANDROID_HOME/platform-tools/adb.exe"   # adb is not on PATH
+
+# 1. Pair (only when re-pairing) — pairing dialog's port + code:
+"$ADB" pair 192.168.50.7:<PAIRING_PORT> <CODE>
+
+# 2. Discover the (different) connect port via mDNS, then connect:
+PORT=$("$ADB" mdns services | grep _adb-tls-connect | grep 192.168.50.7 | grep -oE ':[0-9]+' | head -1 | tr -d ':')
+"$ADB" connect "192.168.50.7:$PORT"
+
+# 3. Install + launch. The device appears twice (via IP and via mDNS), so pin one with -s:
+"$ADB" -s "192.168.50.7:$PORT" install -r app/build/outputs/apk/debug/app-debug.apk
+"$ADB" -s "192.168.50.7:$PORT" shell am start -n com.sidebed.light.debug/com.sidebed.light.MainActivity
+```
+
+Note: `applicationId` is `com.sidebed.light.debug` (debug suffix) but the launcher
+activity class is `com.sidebed.light.MainActivity`. Once paired, future sessions usually
+only need steps 2–3 (re-pair only if the phone "forgets" this computer).
+
 ## Architecture
 
 Single process, single Activity (`MainActivity`) for the UI, plus a foreground
