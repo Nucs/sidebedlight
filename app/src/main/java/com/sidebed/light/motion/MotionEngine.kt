@@ -16,7 +16,7 @@ import kotlin.math.sqrt
  *
  *  - magnitude >= [MotionConfig.moveThreshold] turns the light on at the floor.
  *  - Beyond that, brightness *accumulates* the harder/longer you shake — shake
- *    detection is 3x less sensitive than on/off detection, and the climb is a
+ *    detection is 1.5x less sensitive than on/off detection, and the climb is a
  *    gradual per-second increment (not an instant jump to the shake's level).
  *  - Brightness is peak-held: it only ever grows; it never fades back while on.
  *
@@ -122,12 +122,13 @@ class MotionEngine(
         private const val GRAVITY_ALPHA = 0.8f
         private const val SAMPLING_PERIOD_US = 20_000 // ~50 Hz
 
-        // Shake detection for the brightness ramp is 3x less sensitive than on/off detection.
-        private const val SHAKE_DETECTION_DIVISOR = 3f
+        // Shake detection for the brightness ramp is 1.5x less sensitive than on/off detection
+        // (was 3x — halved so it takes ~50% less shake to climb).
+        private const val SHAKE_DETECTION_DIVISOR = 1.5f
 
-        // Brightness added per second at a full-strength shake. With the divisor above this
-        // reaches max only after a few seconds of hard shaking. Lower = more gradual climb.
-        private const val GROWTH_PER_SECOND = 0.5f
+        // Brightness added per second at a full-strength shake (reaches max in ~1-2s of good
+        // shaking). Higher = climbs faster. Lower = more gradual.
+        private const val GROWTH_PER_SECOND = 1.0f
 
         private const val DEFAULT_DT_SECONDS = 0.02f
     }
