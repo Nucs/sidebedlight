@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base window theme. Actual UI colours come from the Compose Material 3 theme;
+         this only controls the window chrome shown before Compose draws. -->
+    <style name="Theme.SidebedLight" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/night_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- Pure-black window for the red light screen to avoid any blue spill. -->
+    <style name="Theme.SidebedLight.RedLight" parent="Theme.SidebedLight">
+        <item name="android:windowBackground">@color/black</item>
+    </style>
+</resources>
