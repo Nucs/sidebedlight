@@ -14,10 +14,13 @@ import kotlin.math.sqrt
  * Reads the accelerometer, removes gravity with a low-pass filter, and turns the
  * residual (linear acceleration) into a light intensity:
  *
- *  - magnitude >= [MotionConfig.moveThreshold]  -> light on, scaled toward...
- *  - magnitude >= [MotionConfig.shakeThreshold] -> full intensity.
+ *  - magnitude >= [MotionConfig.moveThreshold] turns the light on at the floor.
+ *  - Beyond that, brightness ramps up with how hard you move — but 3x less
+ *    sensitively than detection, so reaching full takes a real shake.
+ *  - Brightness is peak-held: it only ever grows; it never fades back while on.
  *
- * After [MotionConfig.offDelayMs] with no significant motion it calls [onIdle].
+ * After [MotionConfig.offDelayMs] with no significant motion it calls [onIdle], which
+ * resets the held peak so the next movement starts again from the floor.
  * Callbacks are delivered on the main thread.
  */
 class MotionEngine(
@@ -85,10 +88,14 @@ class MotionEngine(
 
         val now = SystemClock.elapsedRealtime()
         if (magnitude >= config.moveThreshold) {
-            val span = (config.shakeThreshold - config.moveThreshold).coerceAtLeast(0.1f)
+            // The ramp is deliberately 3x less sensitive than motion *detection*:
+            // turning on stays easy, but climbing toward full takes a much bigger shake.
+            val span = (config.shakeThreshold - config.moveThreshold).coerceAtLeast(0.1f) *
+                BRIGHTNESS_RAMP_DIVISOR
             val target = ((magnitude - config.moveThreshold) / span).coerceIn(0f, 1f)
-            // Snap up instantly, ease down — bright on shake, no sample flicker.
-            emitted = if (target > emitted) target else emitted * 0.6f + target * 0.4f
+            // Peak-hold: the light only ever grows brighter and never fades back down.
+            // It resets only when the light turns off (the idle branch below).
+            if (target > emitted) emitted = target
             lastSignificantAt = now
             active = true
             onLight(emitted)
@@ -104,5 +111,8 @@ class MotionEngine(
     companion object {
         private const val GRAVITY_ALPHA = 0.8f
         private const val SAMPLING_PERIOD_US = 20_000 // ~50 Hz
+
+        // The brightness ramp climbs 3x slower than motion detection turns the light on.
+        private const val BRIGHTNESS_RAMP_DIVISOR = 3f
     }
 }
