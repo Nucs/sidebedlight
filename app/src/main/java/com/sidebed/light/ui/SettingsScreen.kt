@@ -143,6 +143,10 @@ fun SettingsScreen(vm: SidebedViewModel, onBack: () -> Unit) {
                 if (s.scheduleEnabled) {
                     TimeRow("Turn on at", s.scheduleStartMinutes) { showStartPicker = true }
                     TimeRow("Turn off at", s.scheduleEndMinutes) { showEndPicker = true }
+                    Text("Active on", style = MaterialTheme.typography.bodyMedium)
+                    DayOfWeekPicker(s.scheduleDaysMask) { day ->
+                        vm.update { it.copy(scheduleDaysMask = it.scheduleDaysMask xor (1 shl day)) }
+                    }
                 }
             }
 

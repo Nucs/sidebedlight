@@ -24,13 +24,14 @@ object ScheduleManager {
 
     private const val REQ_ARM = 100
     private const val REQ_DISARM = 101
+    private const val ALL_DAYS = 0b111_1111 // 7 day bits, Sunday..Saturday
 
     /** (Re)install both alarms from the current settings, or cancel if disabled. */
     fun apply(context: Context, settings: SidebedSettings) {
         val am = context.getSystemService(AlarmManager::class.java)
         cancel(context, am)
         if (!settings.scheduleEnabled) return
-        scheduleArm(context, am, settings.scheduleStartMinutes)
+        scheduleArm(context, am, settings.scheduleStartMinutes, settings.scheduleDaysMask)
         scheduleDisarm(context, am, settings.scheduleEndMinutes)
     }
 
@@ -39,7 +40,9 @@ object ScheduleManager {
         if (!settings.scheduleEnabled) return
         val am = context.getSystemService(AlarmManager::class.java)
         when (action) {
-            ACTION_AUTO_ARM -> scheduleArm(context, am, settings.scheduleStartMinutes)
+            ACTION_AUTO_ARM ->
+                scheduleArm(context, am, settings.scheduleStartMinutes, settings.scheduleDaysMask)
+
             ACTION_AUTO_DISARM -> scheduleDisarm(context, am, settings.scheduleEndMinutes)
         }
     }
@@ -52,8 +55,9 @@ object ScheduleManager {
         am.cancel(disarmPendingIntent(context))
     }
 
-    private fun scheduleArm(context: Context, am: AlarmManager, minutes: Int) {
-        val triggerAt = nextOccurrence(minutes)
+    private fun scheduleArm(context: Context, am: AlarmManager, minutes: Int, daysMask: Int) {
+        // No enabled day -> don't schedule an arm at all.
+        val triggerAt = nextOccurrence(minutes, daysMask) ?: return
         val pi = armPendingIntent(context)
         runCatching {
             if (canScheduleExact(am)) {
@@ -74,7 +78,9 @@ object ScheduleManager {
     }
 
     private fun scheduleDisarm(context: Context, am: AlarmManager, minutes: Int) {
-        val triggerAt = nextOccurrence(minutes)
+        // Disarm runs every day at the end time (a no-op if nothing is armed), so the light
+        // always turns off in the morning after any scheduled or manual night.
+        val triggerAt = nextOccurrence(minutes) ?: return
         val pi = disarmPendingIntent(context)
         runCatching {
             if (canScheduleExact(am)) {
@@ -102,8 +108,10 @@ object ScheduleManager {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    /** Next epoch-millis at the given minutes-from-midnight (today or tomorrow). */
-    private fun nextOccurrence(minutesFromMidnight: Int): Long {
+    /** Next epoch-millis at the given minutes-from-midnight on an enabled day, or null. */
+    private fun nextOccurrence(minutesFromMidnight: Int, daysMask: Int = ALL_DAYS): Long? {
+        val mask = daysMask and ALL_DAYS
+        if (mask == 0) return null
         val now = Calendar.getInstance()
         val target = (now.clone() as Calendar).apply {
             set(Calendar.HOUR_OF_DAY, minutesFromMidnight / 60)
@@ -114,6 +122,12 @@ object ScheduleManager {
         if (target.timeInMillis <= now.timeInMillis) {
             target.add(Calendar.DAY_OF_YEAR, 1)
         }
-        return target.timeInMillis
+        // Advance up to a week to the next enabled weekday (Calendar.SUNDAY=1 -> bit 0).
+        for (i in 0 until 7) {
+            val dayBit = 1 shl (target.get(Calendar.DAY_OF_WEEK) - 1)
+            if (mask and dayBit != 0) return target.timeInMillis
+            target.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        return null
     }
 }

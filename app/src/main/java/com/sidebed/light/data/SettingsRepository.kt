@@ -43,6 +43,7 @@ class SettingsRepository(private val context: Context) {
             scheduleEnabled = this[Keys.SCHEDULE_ENABLED] ?: d.scheduleEnabled,
             scheduleStartMinutes = this[Keys.SCHEDULE_START] ?: d.scheduleStartMinutes,
             scheduleEndMinutes = this[Keys.SCHEDULE_END] ?: d.scheduleEndMinutes,
+            scheduleDaysMask = this[Keys.SCHEDULE_DAYS] ?: d.scheduleDaysMask,
             lightMode = this[Keys.LIGHT_MODE]?.let { runCatching { LightMode.valueOf(it) }.getOrNull() }
                 ?: d.lightMode,
             redBrightnessPct = this[Keys.RED_BRIGHTNESS] ?: d.redBrightnessPct,
@@ -61,6 +62,7 @@ class SettingsRepository(private val context: Context) {
         this[Keys.SCHEDULE_ENABLED] = s.scheduleEnabled
         this[Keys.SCHEDULE_START] = s.scheduleStartMinutes
         this[Keys.SCHEDULE_END] = s.scheduleEndMinutes
+        this[Keys.SCHEDULE_DAYS] = s.scheduleDaysMask
         this[Keys.LIGHT_MODE] = s.lightMode.name
         this[Keys.RED_BRIGHTNESS] = s.redBrightnessPct
     }
@@ -77,6 +79,7 @@ class SettingsRepository(private val context: Context) {
         val SCHEDULE_ENABLED = booleanPreferencesKey("schedule_enabled")
         val SCHEDULE_START = intPreferencesKey("schedule_start")
         val SCHEDULE_END = intPreferencesKey("schedule_end")
+        val SCHEDULE_DAYS = intPreferencesKey("schedule_days")
         val LIGHT_MODE = stringPreferencesKey("light_mode")
         val RED_BRIGHTNESS = intPreferencesKey("red_brightness")
     }

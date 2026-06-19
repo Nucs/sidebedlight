@@ -39,6 +39,9 @@ data class SidebedSettings(
     val scheduleStartMinutes: Int = 23 * 60,
     /** Auto-disarm time, in minutes from midnight (default 06:00). */
     val scheduleEndMinutes: Int = 6 * 60,
+    /** Weekdays the schedule runs on, as a bitmask (bit i = day, 0=Sunday..6=Saturday).
+     *  Default = all 7 days. */
+    val scheduleDaysMask: Int = 0b111_1111,
 
     /** Torch (LED) or red screen. */
     val lightMode: LightMode = LightMode.TORCH,

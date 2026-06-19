@@ -147,7 +147,9 @@ touched directly.
   the exact-alarm permission is granted, arm uses `setAlarmClock` (doze-exempt, may start
   the FGS from the background — adds a status-bar alarm icon) and disarm uses
   `setExactAndAllowWhileIdle`; otherwise both fall back to inexact `setAndAllowWhileIdle`.
-  Each alarm reschedules itself for the next day.
+  Each alarm reschedules itself for the next day. The arm only fires on the weekdays in
+  `scheduleDaysMask` (a 7-bit Sun..Sat mask, all on by default); the disarm runs daily and
+  is a no-op when nothing is armed.
 - **Volume-to-zero turns off:** two complementary watchers (toggle: *Behaviour →
   Volume to zero turns off*):
   - `VolumeWatcher` — a ContentObserver; a downward transition of media **or** ring
