@@ -15,14 +15,14 @@ import kotlin.math.sqrt
  * residual (linear acceleration) into a light intensity:
  *
  *  - magnitude >= [MotionConfig.activationThreshold] turns the light on at the floor
- *    (a deliberate pick-up); once on, [MotionConfig.moveThreshold] keeps it alive.
- *  - Beyond that, brightness *accumulates* the harder/longer you shake — shake
- *    detection is 1.5x less sensitive than on/off detection, and the climb is a
- *    gradual per-second increment (not an instant jump to the shake's level).
- *  - Brightness is peak-held: it only ever grows; it never fades back while on.
+ *    (a deliberate pick-up). Once on, ANY motion above [MotionConfig.idleThreshold]
+ *    keeps it alive; brightness climbs only when shaking past [MotionConfig.moveThreshold].
+ *  - Brightness *accumulates* the harder/longer you shake (a gradual per-second climb)
+ *    and is peak-held — it only ever grows; it never fades back while on.
  *
- * After [MotionConfig.offDelayMs] with no significant motion it calls [onIdle], which
- * resets the held peak so the next movement starts again from the floor.
+ * The off-timer runs only while the phone is *completely idle* (below idleThreshold); any
+ * motion resets it. After [MotionConfig.offDelayMs] fully idle it calls [onIdle], which
+ * resets the held peak so the next pick-up starts again from the floor.
  * Callbacks are delivered on the main thread.
  */
 class MotionEngine(
@@ -98,25 +98,37 @@ class MotionEngine(
         }
         lastSampleAt = now
 
-        // Turning on needs a more significant move (a pick-up); staying on is easier.
-        val onThreshold = if (active) config.moveThreshold else config.activationThreshold
-        if (magnitude >= onThreshold) {
-            // Shake detection for the ramp is 3x less sensitive than on/off detection:
-            // turning the light on stays easy, but it takes a much bigger shake to climb.
-            val span = (config.shakeThreshold - config.moveThreshold).coerceAtLeast(0.1f) *
-                SHAKE_DETECTION_DIVISOR
-            val shakeStrength = ((magnitude - config.moveThreshold) / span).coerceIn(0f, 1f)
-            // Gradual peak-hold: brightness accumulates the longer/harder you shake and
-            // never fades back. It resets only when the light turns off (idle branch).
-            emitted = (emitted + shakeStrength * GROWTH_PER_SECOND * dtSeconds).coerceIn(0f, 1f)
-            lastSignificantAt = now
-            active = true
-            onLight(emitted)
-        } else if (active && now - lastSignificantAt >= config.offDelayMs) {
-            active = false
-            emitted = 0f
-            onIdle()
+        if (!active) {
+            // OFF: a deliberate pick-up (high threshold) turns the light on at the floor.
+            if (magnitude >= config.activationThreshold) {
+                active = true
+                lastSignificantAt = now
+                emitted = (emitted + growth(magnitude, config, dtSeconds)).coerceIn(0f, 1f)
+                onLight(emitted)
+            }
+        } else {
+            // ON: ANY motion above the idle floor keeps it alive (brightness climbs only
+            // when shaking past moveThreshold). It turns off only after the phone has been
+            // *completely* idle for the whole off-delay.
+            if (magnitude >= config.idleThreshold) {
+                lastSignificantAt = now
+                emitted = (emitted + growth(magnitude, config, dtSeconds)).coerceIn(0f, 1f)
+                onLight(emitted)
+            } else if (now - lastSignificantAt >= config.offDelayMs) {
+                active = false
+                emitted = 0f
+                onIdle()
+            }
         }
+    }
+
+    /** Per-sample brightness increase; only motion past moveThreshold contributes. */
+    private fun growth(magnitude: Float, config: MotionConfig, dtSeconds: Float): Float {
+        if (magnitude < config.moveThreshold) return 0f
+        val span = (config.shakeThreshold - config.moveThreshold).coerceAtLeast(0.1f) *
+            SHAKE_DETECTION_DIVISOR
+        val shakeStrength = ((magnitude - config.moveThreshold) / span).coerceIn(0f, 1f)
+        return shakeStrength * GROWTH_PER_SECOND * dtSeconds
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) { /* no-op */ }

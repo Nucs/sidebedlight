@@ -132,17 +132,17 @@ touched directly.
 ## How each requirement is implemented
 
 - **Motion → light:** `MotionEngine`. Gravity is removed with a low-pass filter; the
-  residual magnitude drives intensity. Turning **on** from off needs `activationThreshold`
-  (a deliberate pick-up — default 2x the keep-alive threshold, configurable); once on,
-  `moveThreshold` keeps it alive. `moveThreshold`/`shakeThreshold`/`activationThreshold`
-  come from the *Sensitivity*, *Shake strength* and *Activation* settings
-  (`SidebedSettings.toMotionConfig`).
+  residual magnitude drives intensity. Three thresholds (`SidebedSettings.toMotionConfig`):
+  `activationThreshold` (off→on, a deliberate pick-up — default 2x, configurable via
+  *Activation*), `idleThreshold` (a tiny floor — once on, any motion above it keeps the
+  light alive), and `moveThreshold`/`shakeThreshold` (the *Sensitivity*/*Shake strength*
+  band over which brightness climbs).
 - **Move = lowest, shake = max:** the service maps the engine's 0..1 intensity into the
   `minBrightnessPct`..`maxBrightnessPct` window, so any movement is ≥ the floor and a
   full shake hits the ceiling.
-- **7-second auto-off:** `offDelaySeconds` (default 7). Tracked as "time since last
-  significant sample"; on timeout the engine calls `onIdle` and the light turns off but
-  stays **armed**, so the next movement relights it.
+- **Auto-off:** `offDelaySeconds` (default 7, up to 2m). The off-timer runs **only while
+  the phone is completely idle** (below `idleThreshold`); any motion resets it. On timeout
+  the light turns off but stays **armed**, so the next pick-up relights it.
 - **Nightly schedule (e.g. 23:00→06:00):** `ScheduleManager` sets two exact alarms.
   Arm uses `setAlarmClock` (doze-exempt and permitted to start a foreground service from
   the background — it does add a status-bar alarm icon). Disarm uses

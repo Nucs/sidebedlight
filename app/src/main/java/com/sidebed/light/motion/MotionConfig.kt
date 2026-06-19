@@ -2,12 +2,17 @@ package com.sidebed.light.motion
 
 import com.sidebed.light.data.SidebedSettings
 
+/** Below this linear-accel magnitude (m/s²) the phone is treated as completely idle. */
+private const val IDLE_THRESHOLD = 0.25f
+
 /** Tuned thresholds (m/s² of linear acceleration) derived from user settings. */
 data class MotionConfig(
-    /** Motion that keeps the light on once active (and lights up at least the floor). */
+    /** Motion past which brightness climbs (the "shake" base). */
     val moveThreshold: Float,
     /** Larger motion needed to first turn the light on from off (the pick-up gesture). */
     val activationThreshold: Float,
+    /** Below this the phone is completely idle; the off-timer only runs here. */
+    val idleThreshold: Float,
     /** Motion at/above which the light reaches full intensity. */
     val shakeThreshold: Float,
     /** Idle time before the light turns off. */
@@ -25,6 +30,7 @@ fun SidebedSettings.toMotionConfig(): MotionConfig {
     return MotionConfig(
         moveThreshold = move,
         activationThreshold = activation.coerceAtLeast(move),
+        idleThreshold = minOf(IDLE_THRESHOLD, move * 0.6f),
         shakeThreshold = shake.coerceAtLeast(move + 0.8f),
         offDelayMs = offDelaySeconds.coerceAtLeast(1) * 1000L,
     )
