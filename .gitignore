@@ -35,9 +35,10 @@ captures/
 .externalNativeBuild/
 .cxx/
 
-# Keystore files
+# Keystore files / signing secrets
 *.jks
 *.keystore
+keystore.properties
 
 # Kotlin
 .kotlin/

@@ -4,6 +4,12 @@ A motion-activated **bedside night light** for Android. Keep your phone on the
 nightstand — nudge it and the flashlight glows dim, shake it for full brightness, and
 it fades back to dark on its own. Built for half-asleep, one-handed, in-the-dark use.
 
+<p align="center">
+  <img src="screenshots/screenshot-1.jpg" width="30%" alt="Home screen" />
+  <img src="screenshots/screenshot-2.jpg" width="30%" alt="Settings" />
+  <img src="screenshots/screenshot-3.jpg" width="30%" alt="Settings continued" />
+</p>
+
 ## Features
 
 - **Motion-driven light** — gentle movement = lowest brightness, a shake = maximum
