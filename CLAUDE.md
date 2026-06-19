@@ -101,7 +101,8 @@ package com.sidebed.light
 │  ├─ SidebedLightService    foreground service wiring everything together
 │  ├─ ServiceController      arm()/disarm() entry points + action constants
 │  ├─ LightActionReceiver    notification "Turn off" / body tap → disarm
-│  └─ VolumeWatcher          ContentObserver; volume→0 transition fires disarm
+│  ├─ VolumeWatcher          ContentObserver; volume→0 transition fires disarm
+│  └─ VolumeKeyWatcher       MediaSession VolumeProvider; volume-down at minimum disarms
 ├─ schedule/
 │  ├─ ScheduleManager        installs the two daily exact alarms (arm/disarm)
 │  ├─ ScheduleReceiver       alarm fired → arm/disarm + reschedule next day
@@ -143,9 +144,14 @@ touched directly.
   Arm uses `setAlarmClock` (doze-exempt and permitted to start a foreground service from
   the background — it does add a status-bar alarm icon). Disarm uses
   `setExactAndAllowWhileIdle`. Each alarm reschedules itself for the next day.
-- **Volume-to-zero turns off:** `VolumeWatcher` observes system settings; a downward
-  transition of media **or** ring volume to 0 disarms. (An already-silent phone at arm
-  time does not trigger it.) Toggle: *Behaviour → Volume to zero turns off*.
+- **Volume-to-zero turns off:** two complementary watchers (toggle: *Behaviour →
+  Volume to zero turns off*):
+  - `VolumeWatcher` — a ContentObserver; a downward transition of media **or** ring
+    volume to 0 disarms (catches lowering by any means).
+  - `VolumeKeyWatcher` — a `MediaSession` + remote `VolumeProvider` that captures the
+    actual volume-down key **even when volume is already at minimum** (a ContentObserver
+    can't, since the value never changes). Normal up/down still pass through to the
+    stream with the system slider. Best-effort: only while ours is the active media session.
 - **Notification with "Turn off":** the foreground-service notification. Per the spec,
   **both** the action button and tapping the body disarm (both fire
   `LightActionReceiver`). Low-importance, silent, no timestamp.
@@ -154,8 +160,11 @@ touched directly.
   `SidebedSettings`, persisted via DataStore, edited on `SettingsScreen`.
 - **Red light (melatonin):** phone flash LEDs are white only, so red is **screen-based**:
   - `RedLightActivity` — a manual red lamp you can open anytime (drag = brightness).
-  - `RedOverlayController` — armed `RED_SCREEN` mode draws a red overlay window (needs
-    "Display over other apps"; falls back to the LED if not granted).
+  - `RedOverlayController` — armed `RED_SCREEN` mode draws a non-touchable red overlay
+    window (needs "Display over other apps"; selecting red in Settings prompts for it,
+    and it falls back to the LED if still not granted).
+  - Brightness mapping: floor = `minBrightnessPct` for both modes; ceiling =
+    `maxBrightnessPct` for torch, `redBrightnessPct` for red (no double-attenuation).
 
 ## Key decisions & platform caveats
 

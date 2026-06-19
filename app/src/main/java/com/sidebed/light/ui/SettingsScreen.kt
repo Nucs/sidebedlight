@@ -44,6 +44,7 @@ import com.sidebed.light.data.LightMode
 @Composable
 fun SettingsScreen(vm: SidebedViewModel, onBack: () -> Unit) {
     val s by vm.settings.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
 
@@ -85,20 +86,26 @@ fun SettingsScreen(vm: SidebedViewModel, onBack: () -> Unit) {
                 LabeledSlider("Shake strength for max", s.shakeStrengthPct, 0..100, "${s.shakeStrengthPct}%") { v ->
                     vm.update { it.copy(shakeStrengthPct = v) }
                 }
-                LabeledSlider("Turn off after", s.offDelaySeconds, 2..30, "${s.offDelaySeconds}s") { v ->
+                LabeledSlider("Turn off after", s.offDelaySeconds, 2..120, formatSeconds(s.offDelaySeconds)) { v ->
                     vm.update { it.copy(offDelaySeconds = v) }
                 }
             }
 
             SectionCard("Light mode") {
-                ModeSelector(s.lightMode) { mode -> vm.update { it.copy(lightMode = mode) } }
+                ModeSelector(s.lightMode) { mode ->
+                    vm.update { it.copy(lightMode = mode) }
+                    // Red mode needs the overlay permission; prompt for it right away.
+                    if (mode == LightMode.RED_SCREEN && !Permissions.hasOverlay(context)) {
+                        context.startActivity(Permissions.overlaySettingsIntent(context))
+                    }
+                }
                 if (s.lightMode == LightMode.RED_SCREEN) {
                     LabeledSlider("Red brightness", s.redBrightnessPct, 5..100, "${s.redBrightnessPct}%") { v ->
                         vm.update { it.copy(redBrightnessPct = v) }
                     }
                     Text(
-                        "Red mode draws on the screen (LEDs are white only) and needs the " +
-                            "screen on. Grant “Display over other apps” below.",
+                        "Red mode draws on the screen (phone LEDs are white only) and needs the " +
+                            "screen on plus the “Display over other apps” permission.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

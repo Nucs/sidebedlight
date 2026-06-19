@@ -186,3 +186,10 @@ fun formatTime(minutes: Int): String {
     val m = minutes % 60
     return "%02d:%02d".format(h, m)
 }
+
+fun formatSeconds(seconds: Int): String {
+    if (seconds < 60) return "${seconds}s"
+    val m = seconds / 60
+    val r = seconds % 60
+    return if (r == 0) "${m}m" else "${m}m ${r}s"
+}

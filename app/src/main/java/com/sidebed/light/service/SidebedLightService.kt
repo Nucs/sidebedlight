@@ -44,6 +44,7 @@ class SidebedLightService : LifecycleService() {
 
     private var motionEngine: MotionEngine? = null
     private var volumeWatcher: VolumeWatcher? = null
+    private var volumeKeyWatcher: VolumeKeyWatcher? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
     private var started = false
@@ -53,8 +54,14 @@ class SidebedLightService : LifecycleService() {
     // --- Motion callbacks ---------------------------------------------------
 
     private val onLight: (Float) -> Unit = { intensity ->
-        val lo = min(settings.minBrightnessPct, settings.maxBrightnessPct) / 100f
-        val hi = max(settings.minBrightnessPct, settings.maxBrightnessPct) / 100f
+        // Shared floor; the ceiling depends on the active light (torch max vs red max).
+        val floor = settings.minBrightnessPct / 100f
+        val ceiling = when (settings.lightMode) {
+            LightMode.RED_SCREEN -> settings.redBrightnessPct / 100f
+            LightMode.TORCH -> settings.maxBrightnessPct / 100f
+        }
+        val lo = min(floor, ceiling)
+        val hi = max(floor, ceiling)
         val frac = (lo + intensity * (hi - lo)).coerceIn(0f, 1f)
         active?.setIntensity(frac)
         if (!SidebedState.isLightOn.value) SidebedState.isLightOn.value = true
@@ -113,6 +120,8 @@ class SidebedLightService : LifecycleService() {
         motionEngine = null
         volumeWatcher?.stop()
         volumeWatcher = null
+        volumeKeyWatcher?.stop()
+        volumeKeyWatcher = null
         active?.turnOff()
         torch?.release()
         red?.release()
@@ -137,9 +146,14 @@ class SidebedLightService : LifecycleService() {
         if (!updated.wakeLockEnabled) releaseWakeLock()
 
         if (updated.lightMode != previous.lightMode) setupLightController()
-        (active as? RedOverlayController)?.setCeiling(updated.redBrightnessPct / 100f)
 
-        if (updated.volumeOffGesture) volumeWatcher?.ensureStarted() else volumeWatcher?.stop()
+        if (updated.volumeOffGesture) {
+            volumeWatcher?.ensureStarted()
+            volumeKeyWatcher?.start()
+        } else {
+            volumeWatcher?.stop()
+            volumeKeyWatcher?.stop()
+        }
     }
 
     private fun setupLightController() {
@@ -148,7 +162,6 @@ class SidebedLightService : LifecycleService() {
             LightMode.RED_SCREEN -> {
                 val overlay = red
                 if (overlay != null && overlay.isAvailable) {
-                    overlay.setCeiling(settings.redBrightnessPct / 100f)
                     overlay
                 } else {
                     // No overlay permission -> fall back to the LED.
@@ -175,11 +188,16 @@ class SidebedLightService : LifecycleService() {
     }
 
     private fun startVolumeWatcher() {
-        val watcher = VolumeWatcher(this) {
+        volumeWatcher = VolumeWatcher(this) {
             if (settings.volumeOffGesture) ServiceController.disarm(applicationContext)
         }
-        volumeWatcher = watcher
-        if (settings.volumeOffGesture) watcher.ensureStarted()
+        volumeKeyWatcher = VolumeKeyWatcher(this) {
+            if (settings.volumeOffGesture) ServiceController.disarm(applicationContext)
+        }
+        if (settings.volumeOffGesture) {
+            volumeWatcher?.ensureStarted()
+            volumeKeyWatcher?.start()
+        }
     }
 
     // --- Notification -------------------------------------------------------

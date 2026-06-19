@@ -21,18 +21,12 @@ class RedOverlayController(private val context: Context) : LightController {
         context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
     private var view: View? = null
-    private var ceiling: Float = 1f
 
     override val isAvailable: Boolean
         get() = Settings.canDrawOverlays(context)
 
-    /** Upper bound on intensity (the red-brightness setting), 0..1. */
-    fun setCeiling(fraction: Float) {
-        ceiling = fraction.coerceIn(0.02f, 1f)
-    }
-
     override fun setIntensity(fraction: Float) {
-        val f = fraction.coerceIn(0f, 1f) * ceiling
+        val f = fraction.coerceIn(0f, 1f)
         if (f <= 0f) {
             turnOff()
             return
@@ -70,6 +64,7 @@ class RedOverlayController(private val context: Context) : LightController {
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.OPAQUE,
         ).apply { gravity = Gravity.CENTER }
