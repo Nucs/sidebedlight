@@ -19,8 +19,11 @@ data class SidebedSettings(
     val minBrightnessPct: Int = 8,
     /** Highest torch output (% of device max) on a full shake. */
     val maxBrightnessPct: Int = 100,
-    /** How easily motion is detected. Higher = reacts to smaller movements. */
+    /** How easily ongoing motion is detected (keep-alive). Higher = smaller movements count. */
     val sensitivityPct: Int = 45,
+    /** Motion needed to first turn the light on, as a % of the keep-alive threshold.
+     *  200 = a deliberate pick-up (~2x more than what keeps it on). */
+    val activationThresholdPct: Int = 200,
     /** How hard you must shake to reach max brightness. Higher = harder. */
     val shakeStrengthPct: Int = 55,
     /** Seconds of insignificant motion before the light turns off. */

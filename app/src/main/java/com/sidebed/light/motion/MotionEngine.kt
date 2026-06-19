@@ -14,7 +14,8 @@ import kotlin.math.sqrt
  * Reads the accelerometer, removes gravity with a low-pass filter, and turns the
  * residual (linear acceleration) into a light intensity:
  *
- *  - magnitude >= [MotionConfig.moveThreshold] turns the light on at the floor.
+ *  - magnitude >= [MotionConfig.activationThreshold] turns the light on at the floor
+ *    (a deliberate pick-up); once on, [MotionConfig.moveThreshold] keeps it alive.
  *  - Beyond that, brightness *accumulates* the harder/longer you shake — shake
  *    detection is 1.5x less sensitive than on/off detection, and the climb is a
  *    gradual per-second increment (not an instant jump to the shake's level).
@@ -97,7 +98,9 @@ class MotionEngine(
         }
         lastSampleAt = now
 
-        if (magnitude >= config.moveThreshold) {
+        // Turning on needs a more significant move (a pick-up); staying on is easier.
+        val onThreshold = if (active) config.moveThreshold else config.activationThreshold
+        if (magnitude >= onThreshold) {
             // Shake detection for the ramp is 3x less sensitive than on/off detection:
             // turning the light on stays easy, but it takes a much bigger shake to climb.
             val span = (config.shakeThreshold - config.moveThreshold).coerceAtLeast(0.1f) *

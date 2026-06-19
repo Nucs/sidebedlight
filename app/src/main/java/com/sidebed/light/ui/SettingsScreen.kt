@@ -83,12 +83,24 @@ fun SettingsScreen(vm: SidebedViewModel, onBack: () -> Unit) {
                 LabeledSlider("Sensitivity", s.sensitivityPct, 0..100, "${s.sensitivityPct}%") { v ->
                     vm.update { it.copy(sensitivityPct = v) }
                 }
+                LabeledSlider(
+                    "Activation (pick-up)",
+                    s.activationThresholdPct,
+                    100..400,
+                    "%.1f×".format(s.activationThresholdPct / 100f),
+                ) { v -> vm.update { it.copy(activationThresholdPct = v) } }
                 LabeledSlider("Shake strength for max", s.shakeStrengthPct, 0..100, "${s.shakeStrengthPct}%") { v ->
                     vm.update { it.copy(shakeStrengthPct = v) }
                 }
                 LabeledSlider("Turn off after", s.offDelaySeconds, 2..120, formatSeconds(s.offDelaySeconds)) { v ->
                     vm.update { it.copy(offDelaySeconds = v) }
                 }
+                Text(
+                    "Activation is the motion needed to turn on (higher = a firmer pick-up). " +
+                        "Sensitivity keeps it on while you keep moving.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             SectionCard("Light mode") {

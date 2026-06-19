@@ -35,6 +35,7 @@ class SettingsRepository(private val context: Context) {
             minBrightnessPct = this[Keys.MIN_BRIGHTNESS] ?: d.minBrightnessPct,
             maxBrightnessPct = this[Keys.MAX_BRIGHTNESS] ?: d.maxBrightnessPct,
             sensitivityPct = this[Keys.SENSITIVITY] ?: d.sensitivityPct,
+            activationThresholdPct = this[Keys.ACTIVATION_THRESHOLD] ?: d.activationThresholdPct,
             shakeStrengthPct = this[Keys.SHAKE_STRENGTH] ?: d.shakeStrengthPct,
             offDelaySeconds = this[Keys.OFF_DELAY] ?: d.offDelaySeconds,
             wakeLockEnabled = this[Keys.WAKE_LOCK] ?: d.wakeLockEnabled,
@@ -52,6 +53,7 @@ class SettingsRepository(private val context: Context) {
         this[Keys.MIN_BRIGHTNESS] = s.minBrightnessPct
         this[Keys.MAX_BRIGHTNESS] = s.maxBrightnessPct
         this[Keys.SENSITIVITY] = s.sensitivityPct
+        this[Keys.ACTIVATION_THRESHOLD] = s.activationThresholdPct
         this[Keys.SHAKE_STRENGTH] = s.shakeStrengthPct
         this[Keys.OFF_DELAY] = s.offDelaySeconds
         this[Keys.WAKE_LOCK] = s.wakeLockEnabled
@@ -67,6 +69,7 @@ class SettingsRepository(private val context: Context) {
         val MIN_BRIGHTNESS = intPreferencesKey("min_brightness")
         val MAX_BRIGHTNESS = intPreferencesKey("max_brightness")
         val SENSITIVITY = intPreferencesKey("sensitivity")
+        val ACTIVATION_THRESHOLD = intPreferencesKey("activation_threshold")
         val SHAKE_STRENGTH = intPreferencesKey("shake_strength")
         val OFF_DELAY = intPreferencesKey("off_delay")
         val WAKE_LOCK = booleanPreferencesKey("wake_lock")

@@ -132,8 +132,11 @@ touched directly.
 ## How each requirement is implemented
 
 - **Motion → light:** `MotionEngine`. Gravity is removed with a low-pass filter; the
-  residual magnitude drives intensity. `moveThreshold`/`shakeThreshold` come from the
-  *Sensitivity* and *Shake strength* settings (`SidebedSettings.toMotionConfig`).
+  residual magnitude drives intensity. Turning **on** from off needs `activationThreshold`
+  (a deliberate pick-up — default 2x the keep-alive threshold, configurable); once on,
+  `moveThreshold` keeps it alive. `moveThreshold`/`shakeThreshold`/`activationThreshold`
+  come from the *Sensitivity*, *Shake strength* and *Activation* settings
+  (`SidebedSettings.toMotionConfig`).
 - **Move = lowest, shake = max:** the service maps the engine's 0..1 intensity into the
   `minBrightnessPct`..`maxBrightnessPct` window, so any movement is ≥ the floor and a
   full shake hits the ceiling.
@@ -155,9 +158,9 @@ touched directly.
 - **Notification with "Turn off":** the foreground-service notification. Per the spec,
   **both** the action button and tapping the body disarm (both fire
   `LightActionReceiver`). Low-importance, silent, no timestamp.
-- **Settings:** brightness floor/ceiling, sensitivity, shake strength, off-delay,
-  schedule + times, light mode, red brightness, volume gesture, wake lock — all in
-  `SidebedSettings`, persisted via DataStore, edited on `SettingsScreen`.
+- **Settings:** brightness floor/ceiling, sensitivity, activation (pick-up) threshold,
+  shake strength, off-delay (2s–2m), schedule + times, light mode, red brightness,
+  volume gesture, wake lock — all in `SidebedSettings`, persisted via DataStore.
 - **Red light (melatonin):** phone flash LEDs are white only, so red is **screen-based**:
   - `RedLightActivity` — a manual red lamp you can open anytime (drag = brightness).
   - `RedOverlayController` — armed `RED_SCREEN` mode draws a non-touchable red overlay
