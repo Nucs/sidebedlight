@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import com.sidebed.light.MainActivity
 import com.sidebed.light.data.SidebedSettings
 import java.util.Calendar
@@ -53,23 +54,39 @@ object ScheduleManager {
 
     private fun scheduleArm(context: Context, am: AlarmManager, minutes: Int) {
         val triggerAt = nextOccurrence(minutes)
-        val show = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE,
-        )
+        val pi = armPendingIntent(context)
         runCatching {
-            am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, show), armPendingIntent(context))
+            if (canScheduleExact(am)) {
+                val show = PendingIntent.getActivity(
+                    context,
+                    0,
+                    Intent(context, MainActivity::class.java),
+                    PendingIntent.FLAG_IMMUTABLE,
+                )
+                am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, show), pi)
+            } else {
+                // No exact-alarm permission: best-effort inexact. May be delayed and may not
+                // start the foreground service from deep background — granting "Alarms &
+                // reminders" in Settings makes the schedule reliable.
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+            }
         }
     }
 
     private fun scheduleDisarm(context: Context, am: AlarmManager, minutes: Int) {
         val triggerAt = nextOccurrence(minutes)
+        val pi = disarmPendingIntent(context)
         runCatching {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, disarmPendingIntent(context))
+            if (canScheduleExact(am)) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+            }
         }
     }
+
+    private fun canScheduleExact(am: AlarmManager): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
 
     private fun armPendingIntent(context: Context) = PendingIntent.getBroadcast(
         context,

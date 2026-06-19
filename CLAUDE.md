@@ -143,10 +143,11 @@ touched directly.
 - **Auto-off:** `offDelaySeconds` (default 7, up to 2m). The off-timer runs **only while
   the phone is completely idle** (below `idleThreshold`); any motion resets it. On timeout
   the light turns off but stays **armed**, so the next pick-up relights it.
-- **Nightly schedule (e.g. 23:00→06:00):** `ScheduleManager` sets two exact alarms.
-  Arm uses `setAlarmClock` (doze-exempt and permitted to start a foreground service from
-  the background — it does add a status-bar alarm icon). Disarm uses
-  `setExactAndAllowWhileIdle`. Each alarm reschedules itself for the next day.
+- **Nightly schedule (e.g. 23:00→06:00):** `ScheduleManager` sets two daily alarms. When
+  the exact-alarm permission is granted, arm uses `setAlarmClock` (doze-exempt, may start
+  the FGS from the background — adds a status-bar alarm icon) and disarm uses
+  `setExactAndAllowWhileIdle`; otherwise both fall back to inexact `setAndAllowWhileIdle`.
+  Each alarm reschedules itself for the next day.
 - **Volume-to-zero turns off:** two complementary watchers (toggle: *Behaviour →
   Volume to zero turns off*):
   - `VolumeWatcher` — a ContentObserver; a downward transition of media **or** ring
@@ -180,9 +181,9 @@ touched directly.
 - **Foreground service type** is `specialUse` (there is no "flashlight" FGS type). The
   subtype is declared via a `<property>` in the manifest. `ServiceCompat.startForeground`
   passes the type only on API 34+.
-- **Exact alarms:** `USE_EXACT_ALARM` is declared (auto-granted), so the schedule fires
-  exactly without the user-facing permission dance. `SCHEDULE_EXACT_ALARM` is also
-  declared as a fallback and the Settings screen surfaces a "grant" row if needed.
+- **Exact alarms:** only `SCHEDULE_EXACT_ALARM` (user-granted) is declared — `USE_EXACT_ALARM`
+  was removed for Google Play compliance (Play restricts it to alarm-clock/calendar apps).
+  Settings surfaces a "grant" row; without it the schedule degrades to inexact alarms.
 - **Red overlay can't reliably power the screen on** by itself; red mode is best with the
   screen on. This is the honest limitation of screen-based red light.
 - **Volume gesture stream ambiguity:** which stream the volume rocker controls (media vs
@@ -205,5 +206,7 @@ touched directly.
 - Make `RedLightActivity` motion-reactive (reuse `MotionEngine`).
 - Per-app battery-optimization exemption prompt for rock-solid scheduling on aggressive OEMs.
 - A "fade out" instead of a hard off at the idle timeout.
-- Release signing config + enable/verify R8 (`isMinifyEnabled` is on for release but
-  unverified — only debug has been built).
+- Google Play: release signing is configured (`keystore.properties`, git-ignored), the
+  R8 release AAB builds and was verified on-device, and the listing copy, store graphics,
+  data-safety answers and `specialUse` justification live in `docs/play/` +
+  `PRIVACY_POLICY.md`. Remaining: the closed-test rollout and console submission.

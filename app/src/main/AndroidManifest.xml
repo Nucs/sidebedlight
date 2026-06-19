@@ -12,8 +12,7 @@
     <!-- Keep CPU + accelerometer alive while armed with the screen off -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- Auto on/off schedule via exact alarms -->
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Auto on/off schedule via exact alarms (user-granted; Google Play compliant) -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
