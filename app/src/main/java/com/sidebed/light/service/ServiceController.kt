@@ -9,6 +9,7 @@ object ServiceController {
 
     const val ACTION_ARM = "com.sidebed.light.action.ARM"
     const val ACTION_DISARM = "com.sidebed.light.action.DISARM"
+    const val ACTION_RESHOW = "com.sidebed.light.action.RESHOW"
     const val EXTRA_FROM_SCHEDULE = "from_schedule"
 
     /** Start (or refresh) the foreground service and begin watching for motion. */

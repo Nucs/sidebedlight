@@ -159,8 +159,13 @@ touched directly.
     can't, since the value never changes). Normal up/down still pass through to the
     stream with the system slider. Best-effort: only while ours is the active media session.
 - **Notification with "Turn off":** the foreground-service notification. Per the spec,
-  **both** the action button and tapping the body disarm (both fire
-  `LightActionReceiver`). Low-importance, silent, no timestamp.
+  **both** the action button and tapping the body disarm (both fire `LightActionReceiver`).
+  Low-importance, silent, no timestamp. Kept non-dismissable: a `deleteIntent` re-posts it
+  (service `ACTION_RESHOW`) if it's swiped away on Android 13+, guarded by `started` so a
+  real disarm still clears it.
+- **Light off on deactivation:** `TorchController.turnOff()` force-calls `setTorchMode(false)`
+  (it doesn't trust the cached on/off flag), and `onDestroy` releases **both** the torch and
+  the red overlay — so disarming always leaves the LED off regardless of light mode.
 - **Settings:** brightness floor/ceiling, sensitivity, activation (pick-up) threshold,
   shake strength, off-delay (2s–2m), schedule + times, light mode, red brightness,
   volume gesture, wake lock — all in `SidebedSettings`, persisted via DataStore.

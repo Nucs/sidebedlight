@@ -61,10 +61,13 @@ class TorchController(context: Context) : LightController {
 
     override fun turnOff() {
         val id = cameraId ?: return
-        if (!isOn) return
+        // Always force the LED off — don't trust the cached isOn flag — so deactivation can
+        // never leave the torch on even if state drifted out of sync with the hardware.
         try {
             cameraManager.setTorchMode(id, false)
         } catch (e: CameraAccessException) {
+            // ignore — best effort
+        } catch (e: IllegalArgumentException) {
             // ignore — best effort
         } finally {
             isOn = false

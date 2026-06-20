@@ -90,13 +90,26 @@ class SidebedLightService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
-        if (intent?.action == ServiceController.ACTION_DISARM) {
-            stopSelf()
-            return START_NOT_STICKY
+        when (intent?.action) {
+            ServiceController.ACTION_DISARM -> {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+
+            ServiceController.ACTION_RESHOW -> {
+                // The user swiped the notification away — put it straight back so the light
+                // can always be turned off. Guard with `started` so it can't resurrect the
+                // service after a real disarm.
+                if (started) startForegroundNotification(SidebedState.armedBySchedule.value) else stopSelf()
+                return START_STICKY
+            }
+
+            else -> {
+                val fromSchedule = intent?.getBooleanExtra(ServiceController.EXTRA_FROM_SCHEDULE, false) ?: false
+                startArmed(fromSchedule)
+                return START_STICKY
+            }
         }
-        val fromSchedule = intent?.getBooleanExtra(ServiceController.EXTRA_FROM_SCHEDULE, false) ?: false
-        startArmed(fromSchedule)
-        return START_STICKY
     }
 
     private fun startArmed(fromSchedule: Boolean) {
@@ -122,7 +135,7 @@ class SidebedLightService : LifecycleService() {
         volumeWatcher = null
         volumeKeyWatcher?.stop()
         volumeKeyWatcher = null
-        active?.turnOff()
+        // Deactivation must leave no light on, regardless of mode — release both sources.
         torch?.release()
         red?.release()
         releaseWakeLock()
@@ -222,6 +235,14 @@ class SidebedLightService : LifecycleService() {
             Intent(this, LightActionReceiver::class.java).setAction(LightActionReceiver.ACTION_TURN_OFF),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        // Fires if the user swipes the notification away (Android 13+ allows it even for an
+        // ongoing FGS notification); ACTION_RESHOW re-posts it so it stays put.
+        val reshow = PendingIntent.getService(
+            this,
+            2,
+            Intent(this, SidebedLightService::class.java).setAction(ServiceController.ACTION_RESHOW),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
         val text = getString(
             if (fromSchedule) R.string.notif_text_scheduled else R.string.notif_text,
         )
@@ -234,6 +255,7 @@ class SidebedLightService : LifecycleService() {
             .setOngoing(true)
             .setSilent(true)
             .setShowWhen(false)
+            .setDeleteIntent(reshow) // keep it non-dismissable by re-posting on swipe
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
