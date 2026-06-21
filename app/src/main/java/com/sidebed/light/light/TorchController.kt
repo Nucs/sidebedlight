@@ -5,6 +5,8 @@ import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -27,6 +29,36 @@ class TorchController(context: Context) : LightController {
 
     private var isOn = false
     private var lastLevel = -1
+
+    private val handler = Handler(Looper.getMainLooper())
+
+    // Track the torch's real state so an out-of-band change (e.g. the Quick Settings
+    // flashlight tile) can't leave us thinking it's still on. If it goes off underneath us,
+    // clear the cached level so the next setIntensity re-applies and re-lights it.
+    private val torchCallback = object : CameraManager.TorchCallback() {
+        override fun onTorchModeChanged(id: String, enabled: Boolean) {
+            if (id != cameraId) return
+            if (enabled) {
+                isOn = true
+            } else {
+                isOn = false
+                lastLevel = -1
+            }
+        }
+
+        override fun onTorchModeUnavailable(id: String) {
+            if (id == cameraId) {
+                isOn = false
+                lastLevel = -1
+            }
+        }
+    }
+
+    init {
+        if (cameraId != null) {
+            runCatching { cameraManager.registerTorchCallback(torchCallback, handler) }
+        }
+    }
 
     override val isAvailable: Boolean get() = cameraId != null
 
@@ -75,7 +107,10 @@ class TorchController(context: Context) : LightController {
         }
     }
 
-    override fun release() = turnOff()
+    override fun release() {
+        turnOff()
+        runCatching { cameraManager.unregisterTorchCallback(torchCallback) }
+    }
 
     private fun findTorchCamera(): String? = try {
         val ids = cameraManager.cameraIdList
